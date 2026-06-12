@@ -497,20 +497,29 @@
     }
 
     function computeTeams(k) {
-      const N = people.length;
-      const buddies = shuffle(people.filter(isBuddy));
-      const regular = shuffle(people.filter(p => !isBuddy(p)));
-      const targetSize = Math.ceil(N / k);
       const teams = Array.from({length: k}, () => []);
 
-      // Pack buddies into consecutive teams: first team gets up to targetSize,
-      // overflow spills into the next team, so the minimum number leaves the main group.
-      buddies.forEach((p, i) => {
-        teams[Math.min(Math.floor(i / targetSize), k - 1)].push(p);
+      // Group people by buddy-group index so name-variants of the same person
+      // land in the same team, but unrelated buddy-named people are distributed normally.
+      const groupMap = new Map();
+      const regular = [];
+      people.forEach(p => {
+        const gi = buddyGroup(p);
+        if (gi === -1) { regular.push(p); }
+        else {
+          if (!groupMap.has(gi)) groupMap.set(gi, []);
+          groupMap.get(gi).push(p);
+        }
+      });
+
+      // Distribute each buddy group as a unit to the currently smallest team.
+      shuffle([...groupMap.values()]).forEach(group => {
+        const minIdx = teams.reduce((m, t, i) => t.length < teams[m].length ? i : m, 0);
+        group.forEach(p => teams[minIdx].push(p));
       });
 
       // Fill remaining spots greedily to keep all team sizes balanced.
-      regular.forEach(p => {
+      shuffle(regular).forEach(p => {
         const minIdx = teams.reduce((m, t, i) => t.length < teams[m].length ? i : m, 0);
         teams[minIdx].push(p);
       });
