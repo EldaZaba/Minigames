@@ -414,7 +414,7 @@
         spinning = false; btnSpin.disabled = false;
         const n = segments.length, arc = Math.PI*2/n;
         const norm = ((wheelAngle % (Math.PI*2)) + Math.PI*2) % (Math.PI*2);
-        const hit = (Math.PI*2 - (norm - Math.PI + Math.PI*2) % (Math.PI*2)) % (Math.PI*2);
+        const hit = (Math.PI*2 - norm) % (Math.PI*2);
         wheelResult.textContent = '🎉 ' + segments[Math.floor(hit/arc) % n];
       }
       requestAnimationFrame(frame);
@@ -433,7 +433,11 @@
     const tmTeamCount  = document.getElementById('tmTeamCount');
     const tmResult     = document.getElementById('tmResult');
 
-    let people = [];
+    let people = JSON.parse(localStorage.getItem('tm-people') || '[]');
+
+    function savePeople() {
+      localStorage.setItem('tm-people', JSON.stringify(people));
+    }
 
     /* ── Name normalization & grouping ──────────── */
     function norm(s) {
@@ -477,12 +481,12 @@
     function addPerson() {
       const v = tmInput.value.trim(); if (!v) return;
       people.push(v); tmInput.value = '';
-      renderPeopleList();
+      savePeople(); renderPeopleList();
     }
 
     tmPeopleList.addEventListener('click', e => {
       const btn = e.target.closest('.item-remove');
-      if (btn) { people.splice(+btn.dataset.index, 1); renderPeopleList(); }
+      if (btn) { people.splice(+btn.dataset.index, 1); savePeople(); renderPeopleList(); }
     });
     tmBtnAdd.addEventListener('click', addPerson);
     tmInput.addEventListener('keydown', e => { if (e.key==='Enter') addPerson(); });
@@ -502,17 +506,13 @@
       const buddies = shuffle(people.filter(isBuddy));
       const regular = shuffle(people.filter(p => !isBuddy(p)));
 
-      if (buddies.length > 0) {
-        // All buddies land in one randomly chosen team (not always team 1).
-        const buddyTeamIdx = Math.floor(Math.random() * k);
-        buddies.forEach(p => teams[buddyTeamIdx].push(p));
-
-        // Always add at least one regular person to the buddy team.
-        if (regular.length > 0) teams[buddyTeamIdx].push(regular.shift());
+      // Seed each team with 1 non-buddy so every team has at least 1 outsider.
+      for (let i = 0; i < k && regular.length > 0; i++) {
+        teams[i].push(regular.shift());
       }
 
-      // Fill remaining spots greedily to keep all team sizes balanced.
-      regular.forEach(p => {
+      // Distribute everyone else (buddies + leftover regulars) evenly.
+      shuffle([...buddies, ...regular]).forEach(p => {
         const minIdx = teams.reduce((m, t, i) => t.length < teams[m].length ? i : m, 0);
         teams[minIdx].push(p);
       });
