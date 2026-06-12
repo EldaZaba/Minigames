@@ -490,6 +490,7 @@
     });
     tmBtnAdd.addEventListener('click', addPerson);
     tmInput.addEventListener('keydown', e => { if (e.key==='Enter') addPerson(); });
+    renderPeopleList();
 
     /* ── Shuffle ─────────────────────────────────── */
     function shuffle(arr) {
